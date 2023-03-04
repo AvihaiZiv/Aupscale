@@ -5,11 +5,6 @@ SET waifu2x_path_exe=%script_path%waifu2x\waifu2x-ncnn-vulkan.exe
 SET frames_path=%script_path%Frames\
 SET upscaled_path=%script_path%Upscaled\
 set Export_path=%script_path%Export\
-if exist Downloads\ (
-echo Downloads folder exists 
-) else ( 
-mkdir Downloads 
-)
 if exist Frames\ ( 
 echo Frames folder exists 
 ) else ( 
