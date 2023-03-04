@@ -1,5 +1,5 @@
 @echo off
-type Dev
+type Dev.md
 SET script_path=%~dp0
 SET waifu2x_path_exe=%script_path%waifu2x\waifu2x-ncnn-vulkan.exe
 SET frames_path=%script_path%Frames\
@@ -47,7 +47,7 @@ ffmpeg.exe -framerate %frame_rate% -pattern_type sequence -start_number 00000000
 rmdir /s /q "%file_name%"-audio
 del /s /q %frames_path%*
 del /s /q %upscaled_path%*
-type Dev
+type Dev.md
 echo Finished!
 pause
 
