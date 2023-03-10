@@ -1,11 +1,33 @@
 #!/bin/bash
+function clean_temp_files(){
+  local FILE=$1
+  local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
+  if [[ "$KEEP_TEMP_FILES" == "false" ]]; then
+    $(rm -r ./videos/"${FILENAME}")
+    return 0
+  fi
+  return 1
+}
 function rebuid_media(){
+  local FILE=$1
+  local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
+  if [ -n "$AUDIO_INFO" ]; then
+    $(ffmpeg -framerate "$FRAMERATE" -i ./videos/"${FILENAME}"/Upscaled_Frames/frame%09d.png -i ./videos/"${FILENAME}"/Audio/audio.opus -c:a copy -shortest -c:v libx265 -crf 19 -preset slow -x265-params "limit-sao=1:bframes=8:psy-rd=1:aq-mode=3" ./videos/"${FILENAME}".upscaled.mkv)
+  else
+    $(ffmpeg -framerate "$FRAMERATE" -i ./videos/"${FILENAME}"/Upscaled_Frames/frame%09d.png -c:v libx265 -crf 19 -preset slow -x265-params "limit-sao=1:bframes=8:psy-rd=1:aq-mode=3" ./videos/"${FILENAME}".upscaled.mkv)
+  fi
   return 0
 }
 function upscale_frames(){
+  local FILE=$1
+  local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
+  "$WAIFU2X_PATH" -i ./videos/"${FILENAME}"/Frames -o ./videos/"${FILENAME}"/Upscaled_Frames -n ${NOISE} -s ${SCALE} -v
   return 0
 }
 function extract_frames(){
+  local FILE=$1
+  local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
+  $(ffmpeg -i "$FILE" -r "$FRAMERATE" ./videos/"${FILENAME}"/Frames/frame%09d.png)
   return 0
 }
 function make_file_dir()
@@ -19,8 +41,10 @@ function make_file_dir()
   mkdir -p ./videos/"${FILENAME}"/Audio
 }
 function extract_encode_audio(){
-  if [ -n $AUDIO_INFO ]; then
-    
+  if [ -n "$AUDIO_INFO" ]; then
+    local FILE=$1
+    local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
+    $(ffmpeg -i "$FILE" -c:a libopus -vbr on -b:a 192k ./videos/"${FILENAME}"/Audio/audio.opus)
     return 0
   fi
   return 1
@@ -47,7 +71,7 @@ function check_if_media(){
   return 1
 }
 
-function help(){
+function show_help(){
   echo "help"
   return 0
 }
@@ -56,27 +80,25 @@ EXEC_PATH="$(dirname -- "${BASH_SOURCE[0]}")"
 WAIFU2X_PATH="${EXEC_PATH}/waifu2x-ncnn-vulkan/waifu2x-ncnn-vulkan"
 #options
 RECURSIVE=false
-UPSCALE=2
+SCALE=2
 NOISE=0
-VERBOSE=false
-DELETE_FRAMES=true
-DELETE_upscaled
+KEEP_TEMP_FILES=false
 #metadata
 FRAMERATE=""
 AUDIO_INFO=""
 #getopts
-while getopts "ru:n:vh" option; do
+while getopts "rs:n:kh" option; do
   case $option in
     r)
       RECURSIVE=true
       ;;
-    u)
+    s)
       case $OPTARG in
         2|4|6|8|16|32)
-          UPSCALE=$OPTARG
+          SCALE=$OPTARG
           ;;
         *)
-          help
+          show_help
           exit 1
       esac
       ;;
@@ -86,19 +108,19 @@ while getopts "ru:n:vh" option; do
          NOISE=$OPTARG
          ;;
        *)
-         help
+         show_help
          exit 1
       esac
       ;;
-    v)
-      VERBOSE=true
+    k)
+      KEEP_TEMP_FILES=true
       ;;
     h)
-      help
+      show_help
       exit 0
       ;;
     *)
-      help
+      show_help
       exit 1
   esac
 done
@@ -113,7 +135,13 @@ for FILE in $FILES; do
       while read -r $FINDFILE; do
         check_if_media "$FINDFILE"
         if [ "$?" -eq 0 ]; then
-          get_metadata "$FINDFILE"
+          get_metadata "$FILE"
+          make_file_dir "$FILE"
+          extract_encode_audio "$FILE"
+          extract_frames "$FILE"
+          upscale_frames "$FILE"
+          rebuid_media "$FILE"
+          clean_temp_files "$FILE"
         fi
       done <<< "$FINDFILES"
     else
@@ -121,15 +149,26 @@ for FILE in $FILES; do
       while read -r $LSFILE; do
         check_if_media "$LSFILE"
         if [ "$?" -eq 0 ]; then
-          get_metadata "$FINDFILE"
+          get_metadata "$FILE"
+          make_file_dir "$FILE"
+          extract_encode_audio "$FILE"
+          extract_frames "$FILE"
+          upscale_frames "$FILE"
+          rebuid_media "$FILE"
+          clean_temp_files "$FILE"
         fi
       done <<< "$LSFILES"
     fi
   else
     check_if_media "$FILE"
     if [ "$?" -eq 0 ]; then
-      make_file_dir "$FILE"
       get_metadata "$FILE"
+      make_file_dir "$FILE"
+      extract_encode_audio "$FILE"
+      extract_frames "$FILE"
+      upscale_frames "$FILE"
+      rebuid_media "$FILE"
+      clean_temp_files "$FILE"
     fi
 
   fi
