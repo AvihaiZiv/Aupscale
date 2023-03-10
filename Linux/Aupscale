@@ -72,7 +72,21 @@ function check_if_media(){
 }
 
 function show_help(){
-  echo "help"
+  echo "Usage: $0 [-r] [-s <scale factor>] [-n <noise level>] [-k] [-h] <input file> [<input file> ...]"
+  echo "Upscales video files with waifu2x."
+  echo " "
+  echo "Options:"
+  echo "-r                   Recursive, applies waifu2x to all video files in the input directory."
+  echo "-s <scale factor>    Upscale factor. Valid options are 2, 4, 6, 8, 16, and 32. Default is 2."
+  echo "-n <noise level>     Noise reduction level. Valid options are -1, 0, 1, 2, and 3. Default is 0."
+  echo "-k                   Keep temporary files."
+  echo "-h                   Show this help message."
+  echo " "
+  echo "Example usage:"
+  echo "$0 input.mp4"
+  echo "$0 -r input_directory"
+  echo "$0 -s 4 -n 1 input.mp4"
+  echo " "
   return 0
 }
 #paths
