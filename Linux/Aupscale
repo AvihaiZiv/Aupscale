@@ -188,5 +188,7 @@ for FILE in $FILES; do
   fi
 done
 
+exit 0
+
 
 
