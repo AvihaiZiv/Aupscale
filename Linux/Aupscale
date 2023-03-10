@@ -1,0 +1,139 @@
+#!/bin/bash
+function rebuid_media(){
+  return 0
+}
+function upscale_frames(){
+  return 0
+}
+function extract_frames(){
+  return 0
+}
+function make_file_dir()
+{
+  local FILE=$1
+  local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
+  mkdir -p ./videos && \
+  mkdir -p ./videos/"${FILENAME}" && \
+  mkdir -p ./videos/"${FILENAME}"/Frames && \
+  mkdir -p ./videos/"${FILENAME}"/Upscaled_Frames && \
+  mkdir -p ./videos/"${FILENAME}"/Audio
+}
+function extract_encode_audio(){
+  if [ -n $AUDIO_INFO ]; then
+    
+    return 0
+  fi
+  return 1
+}
+function get_metadata(){
+  local FILE=$1
+  FRAMERATE="$(ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate "$FILE")"
+  AUDIO_INFO="$(ffprobe -i "$FILE" -show_streams -select_streams a -loglevel error)"
+  local
+  return 0
+}
+function check_if_media(){
+  local FILE=$1
+  if [ -f $FILE ]; then 
+    FILETYPE="$(file -b "$FILE" | cut -d',' -f1)"
+    case $FILETYPE in
+      *RIFF*|*ISO?Media*|*Ogg?data*|*WebM*|*Microsoft?ASF*|*Matroska?data*|*MPEG*)
+        return 0
+        ;;
+      *)
+        return 1
+    esac
+  fi
+  return 1
+}
+
+function help(){
+  echo "help"
+  return 0
+}
+#paths
+EXEC_PATH="$(dirname -- "${BASH_SOURCE[0]}")"
+WAIFU2X_PATH="${EXEC_PATH}/waifu2x-ncnn-vulkan/waifu2x-ncnn-vulkan"
+#options
+RECURSIVE=false
+UPSCALE=2
+NOISE=0
+VERBOSE=false
+DELETE_FRAMES=true
+DELETE_upscaled
+#metadata
+FRAMERATE=""
+AUDIO_INFO=""
+#getopts
+while getopts "ru:n:vh" option; do
+  case $option in
+    r)
+      RECURSIVE=true
+      ;;
+    u)
+      case $OPTARG in
+        2|4|6|8|16|32)
+          UPSCALE=$OPTARG
+          ;;
+        *)
+          help
+          exit 1
+      esac
+      ;;
+    n)
+      case $OPTARG in
+      -1|0|1|2|3)
+         NOISE=$OPTARG
+         ;;
+       *)
+         help
+         exit 1
+      esac
+      ;;
+    v)
+      VERBOSE=true
+      ;;
+    h)
+      help
+      exit 0
+      ;;
+    *)
+      help
+      exit 1
+  esac
+done
+
+shift $((OPTIND-1))
+
+FILES="$@"
+for FILE in $FILES; do
+  if [ -d "$FILE" ]; then 
+    if [[ "$RECURSIVE" == "true" ]]; then
+      FINDFILES="$(find "$FILE" -type f)"
+      while read -r $FINDFILE; do
+        check_if_media "$FINDFILE"
+        if [ "$?" -eq 0 ]; then
+          get_metadata "$FINDFILE"
+        fi
+      done <<< "$FINDFILES"
+    else
+      LSFILES="$(ls -d "$FILE/*")"
+      while read -r $LSFILE; do
+        check_if_media "$LSFILE"
+        if [ "$?" -eq 0 ]; then
+          get_metadata "$FINDFILE"
+        fi
+      done <<< "$LSFILES"
+    fi
+  else
+    check_if_media "$FILE"
+    if [ "$?" -eq 0 ]; then
+      make_file_dir "$FILE"
+      get_metadata "$FILE"
+    fi
+
+  fi
+done
+
+
+
