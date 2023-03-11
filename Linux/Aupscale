@@ -1,0 +1,194 @@
+#!/bin/bash
+function clean_temp_files(){
+  local FILE=$1
+  local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
+  if [[ "$KEEP_TEMP_FILES" == "false" ]]; then
+    $(rm -r ./videos/"${FILENAME}")
+    return 0
+  fi
+  return 1
+}
+function rebuid_media(){
+  local FILE=$1
+  local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
+  if [ -n "$AUDIO_INFO" ]; then
+    $(ffmpeg -framerate "$FRAMERATE" -i ./videos/"${FILENAME}"/Upscaled_Frames/frame%09d.png -i ./videos/"${FILENAME}"/Audio/audio.opus -c:a copy -shortest -c:v libx265 -crf 19 -preset slow -x265-params "limit-sao=1:bframes=8:psy-rd=1:aq-mode=3" ./videos/"${FILENAME}".upscaled.mkv)
+  else
+    $(ffmpeg -framerate "$FRAMERATE" -i ./videos/"${FILENAME}"/Upscaled_Frames/frame%09d.png -c:v libx265 -crf 19 -preset slow -x265-params "limit-sao=1:bframes=8:psy-rd=1:aq-mode=3" ./videos/"${FILENAME}".upscaled.mkv)
+  fi
+  return 0
+}
+function upscale_frames(){
+  local FILE=$1
+  local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
+  "$WAIFU2X_PATH" -i ./videos/"${FILENAME}"/Frames -o ./videos/"${FILENAME}"/Upscaled_Frames -n ${NOISE} -s ${SCALE} -v
+  return 0
+}
+function extract_frames(){
+  local FILE=$1
+  local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
+  $(ffmpeg -i "$FILE" -r "$FRAMERATE" ./videos/"${FILENAME}"/Frames/frame%09d.png)
+  return 0
+}
+function make_file_dir()
+{
+  local FILE=$1
+  local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
+  mkdir -p ./videos && \
+  mkdir -p ./videos/"${FILENAME}" && \
+  mkdir -p ./videos/"${FILENAME}"/Frames && \
+  mkdir -p ./videos/"${FILENAME}"/Upscaled_Frames && \
+  mkdir -p ./videos/"${FILENAME}"/Audio
+}
+function extract_encode_audio(){
+  if [ -n "$AUDIO_INFO" ]; then
+    local FILE=$1
+    local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
+    $(ffmpeg -i "$FILE" -c:a libopus -vbr on -b:a 192k ./videos/"${FILENAME}"/Audio/audio.opus)
+    return 0
+  fi
+  return 1
+}
+function get_metadata(){
+  local FILE=$1
+  FRAMERATE="$(ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate "$FILE")"
+  AUDIO_INFO="$(ffprobe -i "$FILE" -show_streams -select_streams a -loglevel error)"
+  local
+  return 0
+}
+function check_if_media(){
+  local FILE=$1
+  if [ -f $FILE ]; then 
+    FILETYPE="$(file -b "$FILE" | cut -d',' -f1)"
+    case $FILETYPE in
+      *RIFF*|*ISO?Media*|*Ogg?data*|*WebM*|*Microsoft?ASF*|*Matroska?data*|*MPEG*)
+        return 0
+        ;;
+      *)
+        return 1
+    esac
+  fi
+  return 1
+}
+
+function show_help(){
+  echo "Usage: $0 [-r] [-s <scale factor>] [-n <noise level>] [-k] [-h] <input file> [<input file> ...]"
+  echo "Upscales video files with waifu2x."
+  echo " "
+  echo "Options:"
+  echo "-r                   Recursive, applies waifu2x to all video files in the input directory."
+  echo "-s <scale factor>    Upscale factor. Valid options are 2, 4, 6, 8, 16, and 32. Default is 2."
+  echo "-n <noise level>     Noise reduction level. Valid options are -1, 0, 1, 2, and 3. Default is 0."
+  echo "-k                   Keep temporary files."
+  echo "-h                   Show this help message."
+  echo " "
+  echo "Example usage:"
+  echo "$0 input.mp4"
+  echo "$0 -r input_directory"
+  echo "$0 -s 4 -n 1 input.mp4"
+  echo " "
+  return 0
+}
+#paths
+EXEC_PATH="$(dirname -- "${BASH_SOURCE[0]}")"
+WAIFU2X_PATH="${EXEC_PATH}/waifu2x-ncnn-vulkan/waifu2x-ncnn-vulkan"
+#options
+RECURSIVE=false
+SCALE=2
+NOISE=0
+KEEP_TEMP_FILES=false
+#metadata
+FRAMERATE=""
+AUDIO_INFO=""
+#getopts
+while getopts "rs:n:kh" option; do
+  case $option in
+    r)
+      RECURSIVE=true
+      ;;
+    s)
+      case $OPTARG in
+        2|4|6|8|16|32)
+          SCALE=$OPTARG
+          ;;
+        *)
+          show_help
+          exit 1
+      esac
+      ;;
+    n)
+      case $OPTARG in
+      -1|0|1|2|3)
+         NOISE=$OPTARG
+         ;;
+       *)
+         show_help
+         exit 1
+      esac
+      ;;
+    k)
+      KEEP_TEMP_FILES=true
+      ;;
+    h)
+      show_help
+      exit 0
+      ;;
+    *)
+      show_help
+      exit 1
+  esac
+done
+
+shift $((OPTIND-1))
+
+FILES="$@"
+for FILE in $FILES; do
+  if [ -d "$FILE" ]; then 
+    if [[ "$RECURSIVE" == "true" ]]; then
+      FINDFILES="$(find "$FILE" -type f)"
+      while read -r $FINDFILE; do
+        check_if_media "$FINDFILE"
+        if [ "$?" -eq 0 ]; then
+          get_metadata "$FILE"
+          make_file_dir "$FILE"
+          extract_encode_audio "$FILE"
+          extract_frames "$FILE"
+          upscale_frames "$FILE"
+          rebuid_media "$FILE"
+          clean_temp_files "$FILE"
+        fi
+      done <<< "$FINDFILES"
+    else
+      LSFILES="$(ls -d "$FILE/*")"
+      while read -r $LSFILE; do
+        check_if_media "$LSFILE"
+        if [ "$?" -eq 0 ]; then
+          get_metadata "$FILE"
+          make_file_dir "$FILE"
+          extract_encode_audio "$FILE"
+          extract_frames "$FILE"
+          upscale_frames "$FILE"
+          rebuid_media "$FILE"
+          clean_temp_files "$FILE"
+        fi
+      done <<< "$LSFILES"
+    fi
+  else
+    check_if_media "$FILE"
+    if [ "$?" -eq 0 ]; then
+      get_metadata "$FILE"
+      make_file_dir "$FILE"
+      extract_encode_audio "$FILE"
+      extract_frames "$FILE"
+      upscale_frames "$FILE"
+      rebuid_media "$FILE"
+      clean_temp_files "$FILE"
+    fi
+
+  fi
+done
+
+exit 0
+
+
+
