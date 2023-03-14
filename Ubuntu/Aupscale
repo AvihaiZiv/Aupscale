@@ -12,9 +12,9 @@ function rebuid_media(){
   local FILE=$1
   local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
   if [ -n "$AUDIO_INFO" ]; then
-    ffmpeg -framerate "$FRAMERATE" -i ./videos/"${FILENAME}"/Upscaled_Frames/frame%09d.png -i ./videos/"${FILENAME}"/Audio/audio.opus -c:a copy -shortest -c:v libx265 -crf 19 -preset slow -x265-params "limit-sao=1:bframes=8:psy-rd=1:aq-mode=3" ./videos/"${FILENAME}".upscaled.mkv
+    $(ffmpeg -framerate "$FRAMERATE" -i ./videos/"${FILENAME}"/Upscaled_Frames/frame%09d.png -i ./videos/"${FILENAME}"/Audio/audio.opus -c:a copy -shortest -c:v libx265 -crf 19 -preset slow -x265-params "limit-sao=1:bframes=8:psy-rd=1:aq-mode=3" ./videos/"${FILENAME}".upscaled.mkv)
   else
-    ffmpeg -framerate "$FRAMERATE" -i ./videos/"${FILENAME}"/Upscaled_Frames/frame%09d.png -c:v libx265 -crf 19 -preset slow -x265-params "limit-sao=1:bframes=8:psy-rd=1:aq-mode=3" ./videos/"${FILENAME}".upscaled.mkv
+    $(ffmpeg -framerate "$FRAMERATE" -i ./videos/"${FILENAME}"/Upscaled_Frames/frame%09d.png -c:v libx265 -crf 19 -preset slow -x265-params "limit-sao=1:bframes=8:psy-rd=1:aq-mode=3" ./videos/"${FILENAME}".upscaled.mkv)
   fi
   return 0
 }
@@ -27,7 +27,7 @@ function upscale_frames(){
 function extract_frames(){
   local FILE=$1
   local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
-  ffmpeg -i "$FILE" -r "$FRAMERATE" ./videos/"${FILENAME}"/Frames/frame%09d.png
+  $(ffmpeg -i "$FILE" -r "$FRAMERATE" ./videos/"${FILENAME}"/Frames/frame%09d.png)
   return 0
 }
 function make_file_dir()
@@ -44,7 +44,7 @@ function extract_encode_audio(){
   if [ -n "$AUDIO_INFO" ]; then
     local FILE=$1
     local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
-    ffmpeg -i "$FILE" -c:a libopus -vbr on -b:a 192k ./videos/"${FILENAME}"/Audio/audio.opus
+    $(ffmpeg -i "$FILE" -c:a libopus -vbr on -b:a 192k ./videos/"${FILENAME}"/Audio/audio.opus)
     return 0
   fi
   return 1
