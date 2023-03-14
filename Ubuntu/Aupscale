@@ -146,30 +146,30 @@ for FILE in $FILES; do
   if [ -d "$FILE" ]; then 
     if [[ "$RECURSIVE" == "true" ]]; then
       FINDFILES="$(find "$FILE" -type f)"
-      while read -r $FINDFILE; do
+      while read -r FINDFILE; do
         check_if_media "$FINDFILE"
         if [ "$?" -eq 0 ]; then
-          get_metadata "$FILE"
-          make_file_dir "$FILE"
-          extract_encode_audio "$FILE"
-          extract_frames "$FILE"
-          upscale_frames "$FILE"
-          rebuid_media "$FILE"
-          clean_temp_files "$FILE"
+          get_metadata "$FINDFILE"
+          make_file_dir "$FINDFILE"
+          extract_encode_audio "$FINDFILE"
+          extract_frames "$FINDFILE"
+          upscale_frames "$FINDFILE"
+          rebuid_media "$FINDFILE"
+          clean_temp_files "$FINDFILE"
         fi
       done <<< "$FINDFILES"
     else
-      LSFILES="$(ls -d "$FILE/*")"
-      while read -r $LSFILE; do
+      LSFILES="$(ls -d "$FILE"/*)"
+      while read -r LSFILE; do
         check_if_media "$LSFILE"
         if [ "$?" -eq 0 ]; then
-          get_metadata "$FILE"
-          make_file_dir "$FILE"
-          extract_encode_audio "$FILE"
-          extract_frames "$FILE"
-          upscale_frames "$FILE"
-          rebuid_media "$FILE"
-          clean_temp_files "$FILE"
+          get_metadata "$LSFILE"
+          make_file_dir "$LSFILE"
+          extract_encode_audio "$LSFILE"
+          extract_frames "$LSFILE"
+          upscale_frames "$LSFILE"
+          rebuid_media "$LSFILE"
+          clean_temp_files "$LSFILE"
         fi
       done <<< "$LSFILES"
     fi
