@@ -142,7 +142,7 @@ done
 shift $((OPTIND-1))
 
 FILES="$@"
-for FILE in $FILES; do
+for FILE in "$FILES"; do
   if [ -d "$FILE" ]; then 
     if [[ "$RECURSIVE" == "true" ]]; then
       FINDFILES="$(find "$FILE" -type f)"
