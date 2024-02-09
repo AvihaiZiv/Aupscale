@@ -1,0 +1,22 @@
+FROM ubuntu:latest as builder
+RUN apt-get update -y && apt-get install -y gcc clang clang-tools libvulkan-dev cmake git build-essential
+WORKDIR /app
+RUN git clone https://github.com/nihui/waifu2x-ncnn-vulkan.git
+WORKDIR /app/waifu2x-ncnn-vulkan
+RUN git submodule update --init --recursive
+WORKDIR /app/waifu2x-ncnn-vulkan/build
+RUN cmake ../src
+RUN cmake --build . -j 4
+WORKDIR /app
+
+
+FROM ubuntu:latest as runtime
+RUN apt-get update -y && apt-get install -y ffmpeg file libvulkan-dev
+WORKDIR /app/waifu2x-ncnn-vulkan
+COPY  --from=builder /app/waifu2x-ncnn-vulkan/build/waifu2x-ncnn-vulkan .
+COPY --from=builder /app/waifu2x-ncnn-vulkan/models/ ./
+WORKDIR /app
+COPY ./Aupscale .
+
+ENTRYPOINT [ "./Aupscale" ]
+CMD [ "-h" ]
