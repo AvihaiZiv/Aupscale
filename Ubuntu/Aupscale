@@ -27,7 +27,7 @@ function upscale_frames(){
 function extract_frames(){
   local FILE=$1
   local FILENAME="$(basename $FILE | sed 's/.[A-Za-z0-9]*$//')"
-  $(ffmpeg -i -hwaccel cuda "$FILE" -r "$FRAMERATE" ./videos/"${FILENAME}"/Frames/frame%09d.png)
+  $(ffmpeg -hwaccel cuda -i "$FILE" -r "$FRAMERATE" ./videos/"${FILENAME}"/Frames/frame%09d.png)
   return 0
 }
 function make_file_dir()
